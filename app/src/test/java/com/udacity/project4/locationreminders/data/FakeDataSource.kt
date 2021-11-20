@@ -1,59 +1,49 @@
 package com.udacity.project4.locationreminders.data
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.dto.Result
-import com.udacity.project4.locationreminders.data.dto.Result.Success
-import com.udacity.project4.locationreminders.data.dto.Result.Error
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 //Use FakeDataSource that acts as a test double to the LocalDataSource
-class FakeDataSource(var reminders: MutableList<ReminderDTO>? = mutableListOf()) : ReminderDataSource {
-
+class FakeDataSource(private val dispatcher : CoroutineDispatcher) : ReminderDataSource {
+    private val list = mutableListOf<ReminderDTO>()
     private var shouldReturnError = false
+    private var showLoading = false
 
-    private val observableReminders = MutableLiveData<Result<List<ReminderDTO>>>()
-
-    override suspend fun getReminders(): Result<List<ReminderDTO>> {
-        if (shouldReturnError) {
-            return Error(Exception("Test exception").toString())
-        }
-        reminders?.let { return Success(ArrayList(it)) }
-        return Error(Exception("Reminders not found").toString())
-    }
-
-    suspend fun refreshReminders() {
-        observableReminders.value = getReminders()
-    }
-
-    override suspend fun saveReminder(reminder: ReminderDTO) {
-        reminders?.add(reminder)
-    }
-
-    override suspend fun getReminder(id: String): Result<ReminderDTO> {
-        if (shouldReturnError) {
-            return Error(Exception("Test exception").toString())
-        }
-        reminders?.forEach {
-            if (it.id == id) {
-                return Success(it)
-            }
-        }
-        return Error(Exception("No reminder with id found").toString())
-    }
-
-    override suspend fun deleteAllReminders() {
-        reminders?.clear()
-    }
-
-    fun setReturnError(value: Boolean) {
+    fun setReturnError(value : Boolean) {
         shouldReturnError = value
     }
 
-    override fun observeTasks(): LiveData<Result<List<ReminderDTO>>> {
-        runBlocking { refreshReminders() }
-        return observableReminders
+    fun setShowLoading(value: Boolean) {
+        showLoading = value
     }
 
+    init {
+        list.add(ReminderDTO("Test1","Description 1","Location 1",99.9,10.9,"1"))
+        list.add(ReminderDTO("Test2","Description 2","Location 2",99.9,10.9,"2"))
+    }
+
+    override suspend fun getReminders(): Result<List<ReminderDTO>> = withContext(dispatcher) {
+        if(shouldReturnError) {
+            return@withContext Result.Error("Test exception");
+        }
+        return@withContext Result.Success(list as List<ReminderDTO>)
+    }
+
+    override suspend fun saveReminder(reminder: ReminderDTO) {
+        list.add(reminder)
+    }
+
+    override suspend fun getReminder(id: String): Result<ReminderDTO> {
+        if(shouldReturnError) {
+            return Result.Error("Test exception")
+        }
+        val aux = list.find { reminder -> reminder.id == id } ?: return Result.Error("Not found")
+        return Result.Success(aux)
+    }
+
+    override suspend fun deleteAllReminders() {
+        list.clear()
+    }
 }

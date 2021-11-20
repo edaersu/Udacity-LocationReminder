@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.*
 import androidx.databinding.DataBindingUtil
+import com.google.firebase.auth.FirebaseAuth
 import com.udacity.project4.R
 import com.udacity.project4.authentication.AuthenticationActivity
 import com.udacity.project4.base.BaseFragment
@@ -16,12 +17,9 @@ import com.udacity.project4.utils.setup
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class ReminderListFragment : BaseFragment() {
-
-
     //use Koin to retrieve the ViewModel instance
     override val _viewModel: RemindersListViewModel by viewModel()
     private lateinit var binding: FragmentRemindersBinding
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -44,8 +42,6 @@ class ReminderListFragment : BaseFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-      //  observeAuthenticationState()
-
         binding.lifecycleOwner = this
         setupRecyclerView()
         binding.addReminderFAB.setOnClickListener {
@@ -71,18 +67,17 @@ class ReminderListFragment : BaseFragment() {
     private fun setupRecyclerView() {
         val adapter = RemindersListAdapter {
         }
-
 //        setup the recycler view using the extension function
-        binding.remindersRecyclerView.setup(adapter)
+        binding.reminderssRecyclerView.setup(adapter)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.logout -> {
+                FirebaseAuth.getInstance().signOut()
                 val intent = Intent(context, AuthenticationActivity::class.java)
+                activity?.finish()
                 startActivity(intent)
-                //intent = Intent(context, RemindersActivity::class.java)
-                this.requireActivity().finish()
             }
         }
         return super.onOptionsItemSelected(item)

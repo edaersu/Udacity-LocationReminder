@@ -5,16 +5,25 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
+import androidx.test.platform.app.InstrumentationRegistry
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.dto.Result
-import com.udacity.project4.locationreminders.data.dto.succeeded
+import com.udacity.project4.locationreminders.reminderslist.ReminderDataItem
+import com.udacity.project4.util.MainCoroutineRule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runBlockingTest
 import org.hamcrest.CoreMatchers.`is`
-import org.junit.*
-import org.junit.Assert.assertThat
+import org.hamcrest.CoreMatchers.instanceOf
+import org.hamcrest.MatcherAssert.assertThat
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.junit.runner.RunWith
+import java.lang.Exception
 
 @ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
@@ -22,84 +31,69 @@ import org.junit.runner.RunWith
 @MediumTest
 class RemindersLocalRepositoryTest {
 
-    private lateinit var localDataSource: RemindersLocalRepository
-    private lateinit var database: RemindersDatabase
+    private lateinit var reminderDataBase : RemindersDatabase
+    private lateinit var remindersLocalRepository: RemindersLocalRepository
 
-    // Executes each task synchronously using Architecture Components.
     @get:Rule
     var instantExecutorRule = InstantTaskExecutorRule()
 
-    @Before
-    fun setup() {
-        // using an in-memory database for testing, since it doesn't survive killing the process
-        database = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext(),
-            RemindersDatabase::class.java
-        )
-            .allowMainThreadQueries()
-            .build()
+    @ExperimentalCoroutinesApi
+    @get:Rule
+    var mainCoroutineRule = MainCoroutineRule()
 
-        localDataSource =
-            RemindersLocalRepository(
-                database.reminderDao(),
-                Dispatchers.Main
-            )
+    @Before
+    fun init(){
+        reminderDataBase = Room.inMemoryDatabaseBuilder(InstrumentationRegistry.getInstrumentation().context,
+        RemindersDatabase::class.java).allowMainThreadQueries().build()
+        remindersLocalRepository = RemindersLocalRepository(reminderDataBase.reminderDao(),Dispatchers.Main)
     }
 
     @After
-    fun cleanUp() {
-        database.close()
-    }
+    fun closeDB() = reminderDataBase.close()
 
-    // runBlocking used here because of https://github.com/Kotlin/kotlinx.coroutines/issues/1204
-    @Test
-    fun saveTask_retrievesTask() = runBlocking {
-        // GIVEN - a new task saved in the database
-        val reminder = ReminderDTO("title", "description", "location", 50.0, 50.0)
-        localDataSource.saveReminder(reminder)
-
-        // WHEN  - Task retrieved by ID
-        val result = localDataSource.getReminder(reminder.id)
-
-        // THEN - Same task is returned
-        assertThat(result.succeeded, `is`(true))
-        result as Result.Success
-        assertThat(result.data.title, `is`("title"))
-        assertThat(result.data.description, `is`("description"))
-        assertThat(result.data.location, `is`("location"))
-        assertThat(result.data.latitude, `is`(50.0))
-        assertThat(result.data.longitude, `is`(50.0))
-
-        assertThat(result.succeeded, `is`(true))
+    private fun getReminderDTO(id : String) : ReminderDTO {
+        return ReminderDTO("Test1","Description1","Location test",19.99,34.2,id)
     }
 
     @Test
-    fun saveReminderAndDelete() = runBlocking {
-        // Given a new task in the persistent repository
-        val reminder = ReminderDTO("title", "description", "location", 50.0, 50.0)
-        localDataSource.saveReminder(reminder)
-
-        // When completed in the persistent repository
-        localDataSource.deleteAllReminders()
-        val result = localDataSource.getReminders()
-
-        // Then the task can be retrieved from the persistent repository and is complete
-        assertThat(result.succeeded, `is`(true))
-        result as Result.Success
-        assertThat(result.data, `is`(emptyList()))
+    fun saveReminder_reminderDTO_obj() = mainCoroutineRule.runBlockingTest {
+        val reminderDTO = getReminderDTO("1")
+        remindersLocalRepository.saveReminder(reminderDTO)
+        val loadedReminder = remindersLocalRepository.getReminder(reminderDTO.id) as? Result.Success<*>
+        assertEquals(true,loadedReminder != null)
+        val data = loadedReminder!!.data as ReminderDTO
+        assertEquals(reminderDTO,data)
     }
 
     @Test
-    fun deleteRemindersAndCheck() = runBlocking {
-        // Given an empty repository
-        localDataSource.deleteAllReminders()
+    fun getReminders_twoElements_noEmptyList() = mainCoroutineRule.runBlockingTest {
+        insertTwoElements()
+        val list = remindersLocalRepository.getReminders() as? Result.Success<*>
+        assertEquals(true, list != null)
+    }
 
-        // Try and get reminder by ID
-        val result = localDataSource.getReminder("errortestid")
+    private suspend fun insertTwoElements() {
+        val reminderDTO1 = getReminderDTO("1")
+        val reminderDTO2 = getReminderDTO("2")
+        remindersLocalRepository.saveReminder(reminderDTO1)
+        remindersLocalRepository.saveReminder(reminderDTO2)
+    }
 
-        // Then the task fails to be retrieved from the persistent repository and error thrown
-        assertThat(result.succeeded, `is`(false))
+    @Test
+    fun cleanData_insertTwoElements_emptyList() = mainCoroutineRule.runBlockingTest {
+        insertTwoElements()
+        remindersLocalRepository.deleteAllReminders()
+        val list = remindersLocalRepository.getReminders() as? Result.Success<*>
+        assertEquals(true, list != null)
+        val dataList = ArrayList<ReminderDataItem>()
+        assertEquals(true,dataList.isEmpty())
+    }
 
+    @Test
+    fun getReminders_noFoundElement_Error() = mainCoroutineRule.runBlockingTest {
+        remindersLocalRepository.deleteAllReminders()
+        val reminder = remindersLocalRepository.getReminder("1") as? Result.Error
+        assertEquals(true,reminder != null)
     }
 
 }

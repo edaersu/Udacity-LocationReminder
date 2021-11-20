@@ -1,16 +1,13 @@
 package com.udacity.project4.locationreminders.reminderslist
 
 import android.app.Application
-import androidx.lifecycle.LiveData
+import android.util.Log
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.map
 import androidx.lifecycle.viewModelScope
 import com.udacity.project4.base.BaseViewModel
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.dto.Result
-import com.udacity.project4.locationreminders.data.dto.Result.Success
-import com.udacity.project4.locationreminders.data.dto.Result.Error
 import kotlinx.coroutines.launch
 
 class RemindersListViewModel(
@@ -19,10 +16,6 @@ class RemindersListViewModel(
 ) : BaseViewModel(app) {
     // list that holds the reminder data to be displayed on the UI
     val remindersList = MutableLiveData<List<ReminderDataItem>>()
-    val reminders: LiveData<Result<List<ReminderDTO>>> = dataSource.observeTasks()
-
-    val error: LiveData<Boolean> = reminders.map { it is Error }
-    val empty: LiveData<Boolean> = reminders.map { (it as? Success)?.data.isNullOrEmpty() }
 
     /**
      * Get all the reminders from the DataSource and add them to the remindersList to be shown on the UI,
@@ -35,7 +28,7 @@ class RemindersListViewModel(
             val result = dataSource.getReminders()
             showLoading.postValue(false)
             when (result) {
-                is Success<*> -> {
+                is Result.Success<*> -> {
                     val dataList = ArrayList<ReminderDataItem>()
                     dataList.addAll((result.data as List<ReminderDTO>).map { reminder ->
                         //map the reminder data from the DB to the be ready to be displayed on the UI
@@ -50,9 +43,8 @@ class RemindersListViewModel(
                     })
                     remindersList.value = dataList
                 }
-                is Error -> {
+                is Result.Error ->
                     showSnackBar.value = result.message
-                }
             }
 
             //check if no data has to be shown

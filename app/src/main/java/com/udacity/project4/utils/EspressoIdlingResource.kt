@@ -1,13 +1,8 @@
 package com.udacity.project4.utils
 
-import androidx.test.espresso.IdlingResource
 import androidx.test.espresso.idling.CountingIdlingResource
 
-/**
- * Contains a static reference to [IdlingResource]
- */
 object EspressoIdlingResource {
-
     private const val RESOURCE = "GLOBAL"
 
     @JvmField

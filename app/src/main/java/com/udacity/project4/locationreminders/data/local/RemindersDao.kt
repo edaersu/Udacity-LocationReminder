@@ -1,27 +1,13 @@
 package com.udacity.project4.locationreminders.data.local
 
-import androidx.lifecycle.LiveData
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
+import androidx.room.*
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
-import com.udacity.project4.locationreminders.reminderslist.ReminderDataItem
 
 /**
  * Data Access Object for the reminders table.
  */
 @Dao
 interface RemindersDao {
-
-    /**
-     * Observes list of tasks.
-     *
-     * @return all tasks.
-     */
-    @Query("SELECT * FROM reminders")
-    fun observeTasks(): LiveData<List<ReminderDTO>>
-
     /**
      * @return all reminders.
      */
@@ -48,5 +34,6 @@ interface RemindersDao {
      */
     @Query("DELETE FROM reminders")
     suspend fun deleteAllReminders()
+
 
 }

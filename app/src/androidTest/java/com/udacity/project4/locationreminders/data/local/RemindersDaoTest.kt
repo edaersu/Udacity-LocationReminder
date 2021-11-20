@@ -1,17 +1,22 @@
 package com.udacity.project4.locationreminders.data.local
 
+import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
-import com.firebase.ui.auth.AuthUI.getApplicationContext
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
+import com.udacity.project4.locationreminders.reminderslist.ReminderDataItem
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.runner.RunWith;
+
 import kotlinx.coroutines.ExperimentalCoroutinesApi;
 import kotlinx.coroutines.test.runBlockingTest
-import org.hamcrest.CoreMatchers.*
+import org.hamcrest.CoreMatchers.`is`
+import org.hamcrest.CoreMatchers.notNullValue
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.After
 import org.junit.Test
@@ -22,58 +27,58 @@ import org.junit.Test
 @SmallTest
 class RemindersDaoTest {
 
-    // Executes each task synchronously using Architecture Components.
     @get:Rule
     var instantExecutorRule = InstantTaskExecutorRule()
 
-    private lateinit var database: RemindersDatabase
+    private lateinit var database : RemindersDatabase
 
     @Before
-    fun initDb() {
-        // Using an in-memory database so that the information stored here disappears when the
-        // process is killed.
-        database = Room.inMemoryDatabaseBuilder(
-            getApplicationContext(),
-            RemindersDatabase::class.java
-        ).build()
+    fun initDB() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        database = Room.inMemoryDatabaseBuilder(context,RemindersDatabase::class.java).build()
     }
 
     @After
-    fun closeDb() = database.close()
+    fun closeDB() {
+        database.close()
+    }
 
-    @Test
-    fun saveReminderAndGetById() = runBlockingTest {
-        // GIVEN - Save a reminder.
-        val reminder = ReminderDTO("title", "description", "location",
-            50.0, 50.0)
-        database.reminderDao().saveReminder(reminder)
-
-        // WHEN - Get the reminder by id from the database.
-        val loaded = database.reminderDao().getReminderById(reminder.id)
-
-        // THEN - The loaded data contains the expected values.
-        assertThat<ReminderDTO>(loaded as ReminderDTO, notNullValue())
-        assertThat(loaded.id, `is`(reminder.id))
-        assertThat(loaded.title, `is`(reminder.title))
-        assertThat(loaded.description, `is`(reminder.description))
-        assertThat(loaded.latitude, `is`(reminder.latitude))
-        assertThat(loaded.longitude, `is`(reminder.longitude))
-        assertThat(loaded.location, `is`(reminder.location))
+    private fun getReminderDTO() : ReminderDTO {
+        return ReminderDTO("Test1","Description1","Location test",19.99,34.2,"1")
     }
 
     @Test
-    fun deleteRemindersAndGetReminders() = runBlockingTest {
-        // GIVEN - Save a reminder.
-        val reminder = ReminderDTO("title", "description", "location",
-            50.0, 50.0)
-        database.reminderDao().saveReminder(reminder)
+    fun saveReminder_reminderDTO_success() = runBlockingTest {
+        val reminderItem = getReminderDTO()
+        database.reminderDao().saveReminder(reminderItem)
+        val loaded = database.reminderDao().getReminderById("1")
+        assertThat(loaded as ReminderDTO, notNullValue())
+        assertThat(loaded.title, `is`(reminderItem.title) )
+        assertThat(loaded.description, `is`(reminderItem.description) )
+        assertThat(loaded.location, `is`(reminderItem.location) )
+        assertThat(loaded.latitude, `is`(reminderItem.latitude) )
+        assertThat(loaded.longitude, `is`(reminderItem.longitude) )
+    }
 
-        // WHEN - Delete reminders and get list
+    @Test
+    fun cleanDataBase_NoRecords() = runBlockingTest {
+        val reminderDTO = getReminderDTO()
+        database.reminderDao().saveReminder(reminderDTO)
+        val listReminders = database.reminderDao().getReminders()
         database.reminderDao().deleteAllReminders()
-        val loaded = database.reminderDao().getReminders()
-
-        // THEN - The loaded data contains the expected values.
-        assertThat(loaded, `is`(emptyList()))
+        val listAfterDeleteAll = database.reminderDao().getReminders()
+        assertThat(listReminders.isEmpty(),`is`(false))
+        assertThat(listAfterDeleteAll.isEmpty(),`is`(true))
     }
 
+    @Test
+    fun saveReminder_twoRemindersDTO_twoElements() = runBlockingTest {
+        val reminderDTO1 = getReminderDTO()
+        val reminderDTO2 = getReminderDTO()
+        reminderDTO2.id = "2"
+        database.reminderDao().saveReminder(reminderDTO2)
+        database.reminderDao().saveReminder(reminderDTO1)
+        val list = database.reminderDao().getReminders()
+        assertThat(list.size,`is`(2))
+    }
 }

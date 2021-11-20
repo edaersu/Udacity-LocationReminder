@@ -1,11 +1,9 @@
 package com.udacity.project4.locationreminders.data.local
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.map
-import com.udacity.project4.utils.wrapEspressoIdlingResource
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.dto.Result
+import com.udacity.project4.utils.wrapEspressoIdlingResource
 import kotlinx.coroutines.*
 
 /**
@@ -20,14 +18,6 @@ class RemindersLocalRepository(
     private val remindersDao: RemindersDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ReminderDataSource {
-
-    override fun observeTasks(): LiveData<Result<List<ReminderDTO>>> {
-        wrapEspressoIdlingResource {
-            return remindersDao.observeTasks().map {
-                Result.Success(it)
-            }
-        }
-    }
 
     /**
      * Get the reminders list from the local db
@@ -48,8 +38,8 @@ class RemindersLocalRepository(
      * @param reminder the reminder to be inserted
      */
     override suspend fun saveReminder(reminder: ReminderDTO) =
-        wrapEspressoIdlingResource {
-            withContext(ioDispatcher) {
+        withContext(ioDispatcher) {
+            wrapEspressoIdlingResource {
                 remindersDao.saveReminder(reminder)
             }
         }
@@ -78,8 +68,8 @@ class RemindersLocalRepository(
      * Deletes all the reminders in the db
      */
     override suspend fun deleteAllReminders() {
-        wrapEspressoIdlingResource {
-            withContext(ioDispatcher) {
+        withContext(ioDispatcher) {
+            wrapEspressoIdlingResource {
                 remindersDao.deleteAllReminders()
             }
         }
